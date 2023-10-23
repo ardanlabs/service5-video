@@ -60,12 +60,18 @@ dev-down:
 # ------------------------------------------------------------------------------
 
 dev-load:
-	cd zarf/k8s/dev/sales; kustomize edit set image service-image=$(SERVICE_IMAGE)
 	kind load docker-image $(SERVICE_IMAGE) --name $(KIND_CLUSTER)
 
 dev-apply:
 	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(APP) --timeout=120s --for=condition=Ready
+
+dev-restart:
+	kubectl rollout restart deployment $(APP) --namespace=$(NAMESPACE)
+
+dev-update: all dev-load dev-restart
+
+dev-update-apply: all dev-load dev-apply
 
 # ------------------------------------------------------------------------------
 
