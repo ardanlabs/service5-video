@@ -47,3 +47,7 @@ kind: Service
 metadata:
   name: sales-api
   namespace: sales-system
+
+spec:
+  selector:
+    app: sales
