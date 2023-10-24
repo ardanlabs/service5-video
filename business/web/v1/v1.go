@@ -23,7 +23,7 @@ type RouteAdder interface {
 
 // APIMux constructs a http.Handler with all application routes defined.
 func APIMux(cfg APIMuxConfig, routeAdder RouteAdder) *web.App {
-	app := web.NewApp(cfg.Shutdown, mid.Logger(cfg.Log), mid.Errors(cfg.Log))
+	app := web.NewApp(cfg.Shutdown, mid.Logger(cfg.Log), mid.Errors(cfg.Log), mid.Panics())
 
 	routeAdder.Add(app, cfg)
 
