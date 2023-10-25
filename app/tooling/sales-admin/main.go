@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -22,7 +23,9 @@ func main() {
 }
 
 func gentoken() error {
-	privateKey, err := genkey()
+
+	// Generate a new private key.
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("generating key: %w", err)
 	}
@@ -63,6 +66,32 @@ func gentoken() error {
 
 	fmt.Println("****************")
 	fmt.Println(str)
+	fmt.Println("****************")
+
+	// -------------------------------------------------------------------------
+
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name}))
+
+	keyFunc := func(t *jwt.Token) (interface{}, error) {
+		return &privateKey.PublicKey, nil
+	}
+
+	var claims2 struct {
+		jwt.RegisteredClaims
+		Roles []string
+	}
+
+	tkn, err := parser.ParseWithClaims(str, &claims2, keyFunc)
+	if err != nil {
+		return fmt.Errorf("parsing token: %w", err)
+	}
+
+	if !tkn.Valid {
+		return errors.New("signature failed")
+	}
+
+	fmt.Println("SIGNATURE VALIDATED")
+	fmt.Printf("%#v\n", claims2)
 	fmt.Println("****************")
 
 	return nil
