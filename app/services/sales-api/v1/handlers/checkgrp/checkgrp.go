@@ -5,18 +5,21 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/ardanlabs/service/foundation/web"
 )
 
 // Handlers manages the set of check endpoints.
 type Handlers struct {
+	log   *logger.Logger
 	build string
 }
 
 // New constructs a Handlers api for the check group.
-func New(build string) *Handlers {
+func New(build string, log *logger.Logger) *Handlers {
 	return &Handlers{
 		build: build,
+		log:   log,
 	}
 }
 
@@ -32,6 +35,8 @@ func (h *Handlers) Readiness(ctx context.Context, w http.ResponseWriter, r *http
 	}{
 		Status: status,
 	}
+
+	h.log.Info(ctx, "readiness", "status", status)
 
 	return web.Respond(ctx, w, data, statusCode)
 }
@@ -65,6 +70,8 @@ func (h *Handlers) Liveness(ctx context.Context, w http.ResponseWriter, r *http.
 		Namespace:  os.Getenv("KUBERNETES_NAMESPACE"),
 		GOMAXPROCS: os.Getenv("GOMAXPROCS"),
 	}
+
+	h.log.Info(ctx, "liveness", "status", "OK")
 
 	// This handler provides a free timer loop.
 
