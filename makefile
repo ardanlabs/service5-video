@@ -22,6 +22,9 @@ curl:
 load:
 	hey -m GET -c 100 -n 100000 "http://localhost:3000/hack"
 
+admin:
+	go run app/tooling/sales-admin/main.go
+
 # ==============================================================================
 # Define dependencies
 
