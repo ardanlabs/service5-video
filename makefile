@@ -20,7 +20,7 @@ curl:
 	curl -il http://localhost:3000/hack
 
 curl-auth:
-	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/hack
+	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/hackauth
 
 load:
 	hey -m GET -c 100 -n 100000 "http://localhost:3000/hack"
