@@ -17,16 +17,22 @@ run-help:
 	go run app/services/sales-api/main.go --help | go run app/tooling/logfmt/main.go
 
 curl:
-	curl -il http://localhost:3000/hack
+	curl -il http://localhost:3000/v1/hack
 
 curl-auth:
-	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/hackauth
+	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/v1/hackauth
 
 load:
-	hey -m GET -c 100 -n 100000 "http://localhost:3000/hack"
+	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
 
 admin:
 	go run app/tooling/sales-admin/main.go
+
+ready:
+	curl -il http://localhost:3000/v1/readiness
+
+live:
+	curl -il http://localhost:3000/v1/liveness
 
 # ==============================================================================
 # Define dependencies
