@@ -226,6 +226,8 @@ go.opentelemetry.io/otel/sdk/trace
 go.opentelemetry.io/otel/trace
 # golang.org/x/crypto v0.13.0
 ## explicit; go 1.17
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
 golang.org/x/crypto/sha3
 # golang.org/x/net v0.15.0
 ## explicit; go 1.17
