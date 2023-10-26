@@ -34,6 +34,9 @@ ready:
 live:
 	curl -il http://localhost:3000/v1/liveness
 
+curl-create:
+	curl -il -X POST -H 'Content-Type: application/json' -d '{"name":"bill","email":"b@gmail.com","roles":["ADMIN"],"department":"IT","password":"123","passwordConfirm":"123"}' http://localhost:3000/v1/users
+
 # ==============================================================================
 # Define dependencies
 
@@ -125,7 +128,7 @@ dev-logs-init:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(APP) -f --tail=100 -c init-migrate
 
 pgcli:
-	pgcli postgresql://postgres:postgres@localhost
+	pgcli postgresql://postgres:postgres@localhosts
 
 # ------------------------------------------------------------------------------
 
