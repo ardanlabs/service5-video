@@ -2,17 +2,22 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"runtime/debug"
 	"testing"
 
 	"github.com/ardanlabs/service/app/services/sales-api/v1/handlers"
+	"github.com/ardanlabs/service/app/services/sales-api/v1/handlers/usergrp"
 	"github.com/ardanlabs/service/business/core/user"
 	"github.com/ardanlabs/service/business/data/dbtest"
 	"github.com/ardanlabs/service/business/data/order"
 	v1 "github.com/ardanlabs/service/business/web/v1"
+	"github.com/ardanlabs/service/business/web/v1/response"
+	"github.com/google/go-cmp/cmp"
 )
 
 type seedData struct {
@@ -84,5 +89,51 @@ func Test_Web(t *testing.T) {
 
 func (wt *WebTests) get200(sd seedData) func(t *testing.T) {
 	return func(t *testing.T) {
+		table := []struct {
+			name    string
+			url     string
+			resp    any
+			expResp any
+		}{
+			{
+				name: "user",
+				url:  "/v1/users?page=1&rows=2&orderBy=user_id,DESC",
+				resp: &response.PageDocument[usergrp.AppUser]{},
+				expResp: &response.PageDocument[usergrp.AppUser]{
+					Page:        1,
+					RowsPerPage: 2,
+					Total:       len(sd.users),
+					Items:       toAppUsers(sd.users),
+				},
+			},
+		}
+
+		for _, tt := range table {
+			r := httptest.NewRequest(http.MethodGet, tt.url, nil)
+			w := httptest.NewRecorder()
+
+			r.Header.Set("Authorization", "Bearer "+wt.adminToken)
+			wt.app.ServeHTTP(w, r)
+
+			if w.Code != http.StatusOK {
+				t.Errorf("%s: Should receive a status code of 200 for the response : %d", tt.name, w.Code)
+				continue
+			}
+
+			if err := json.Unmarshal(w.Body.Bytes(), tt.resp); err != nil {
+				t.Errorf("Should be able to unmarshal the response : %s", err)
+				continue
+			}
+
+			diff := cmp.Diff(tt.resp, tt.expResp)
+			if diff != "" {
+				t.Error("Should get the expected response")
+				t.Log("GOT")
+				t.Logf("%#v", tt.resp)
+				t.Log("EXP")
+				t.Logf("%#v", tt.expResp)
+				continue
+			}
+		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/ardanlabs/service/business/core/user"
+	"github.com/ardanlabs/service/business/data/page"
 	"github.com/ardanlabs/service/business/web/v1/auth"
 	"github.com/ardanlabs/service/business/web/v1/response"
 	"github.com/ardanlabs/service/foundation/web"
@@ -47,4 +48,51 @@ func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	return web.Respond(ctx, w, toAppUser(usr), http.StatusCreated)
+}
+
+// Query returns a list of users with paging.
+func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	page, err := page.Parse(r)
+	if err != nil {
+		return err
+	}
+
+	filter, err := parseFilter(r)
+	if err != nil {
+		return err
+	}
+
+	orderBy, err := parseOrder(r)
+	if err != nil {
+		return err
+	}
+
+	users, err := h.user.Query(ctx, filter, orderBy, page.Number, page.RowsPerPage)
+	if err != nil {
+		return fmt.Errorf("query: %w", err)
+	}
+
+	total, err := h.user.Count(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("count: %w", err)
+	}
+
+	return web.Respond(ctx, w, response.NewPageDocument(toAppUsers(users), total, page.Number, page.RowsPerPage), http.StatusOK)
+}
+
+// QueryByID returns a user by its ID.
+func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	id := auth.GetUserID(ctx)
+
+	usr, err := h.user.QueryByID(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrNotFound):
+			return response.NewError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("querybyid: id[%s]: %w", id, err)
+		}
+	}
+
+	return web.Respond(ctx, w, toAppUser(usr), http.StatusOK)
 }
