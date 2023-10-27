@@ -10,6 +10,7 @@ import (
 	"github.com/ardanlabs/service/business/core/user"
 	db "github.com/ardanlabs/service/business/data/dbsql/pgx"
 	"github.com/ardanlabs/service/business/data/order"
+	"github.com/ardanlabs/service/business/data/transaction"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -18,7 +19,7 @@ import (
 // Store manages the set of APIs for user database access.
 type Store struct {
 	log *logger.Logger
-	db  *sqlx.DB
+	db  sqlx.ExtContext
 }
 
 // NewStore constructs the api for data access.
@@ -27,6 +28,22 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 		log: log,
 		db:  db,
 	}
+}
+
+// ExecuteUnderTransaction constructs a new Store value replacing the sqlx DB
+// value with a sqlx DB value that is currently inside a transaction.
+func (s *Store) ExecuteUnderTransaction(tx transaction.Transaction) (user.Storer, error) {
+	ec, err := db.GetExtContext(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	s = &Store{
+		log: s.log,
+		db:  ec,
+	}
+
+	return s, nil
 }
 
 // Create inserts a new user into the database.
