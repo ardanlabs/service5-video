@@ -10,9 +10,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ardanlabs/service/business/core/user"
+	"github.com/ardanlabs/service/business/core/user/stores/userdb"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/open-policy-agent/opa/rego"
 )
 
@@ -22,7 +25,7 @@ var ErrForbidden = errors.New("attempted action is not allowed")
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
 	jwt.RegisteredClaims
-	Roles []string `json:"roles"`
+	Roles []user.Role `json:"roles"`
 }
 
 // KeyLookup declares a method set of behavior for looking up
@@ -36,6 +39,7 @@ type KeyLookup interface {
 // Config represents information required to initialize auth.
 type Config struct {
 	Log       *logger.Logger
+	DB        *sqlx.DB
 	KeyLookup KeyLookup
 	Issuer    string
 }
@@ -45,6 +49,7 @@ type Config struct {
 type Auth struct {
 	log       *logger.Logger
 	keyLookup KeyLookup
+	usrCore   *user.Core
 	method    jwt.SigningMethod
 	parser    *jwt.Parser
 	issuer    string
@@ -54,9 +59,18 @@ type Auth struct {
 
 // New creates an Auth to support authentication/authorization.
 func New(cfg Config) (*Auth, error) {
+
+	// If a database connection is not provided, we won't perform the
+	// user enabled check.
+	var usrCore *user.Core
+	if cfg.DB != nil {
+		usrCore = user.NewCore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB))
+	}
+
 	a := Auth{
 		log:       cfg.Log,
 		keyLookup: cfg.KeyLookup,
+		usrCore:   usrCore,
 		method:    jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
 		parser:    jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
 		issuer:    cfg.Issuer,
@@ -218,5 +232,18 @@ func (a *Auth) opaPolicyEvaluation(ctx context.Context, opaPolicy string, rule s
 // isUserEnabled hits the database and checks the user is not disabled. If the
 // no database connection was provided, this check is skipped.
 func (a *Auth) isUserEnabled(ctx context.Context, claims Claims) error {
+	if a.usrCore == nil {
+		return nil
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return fmt.Errorf("parse user: %w", err)
+	}
+
+	if _, err := a.usrCore.QueryByID(ctx, userID); err != nil {
+		return fmt.Errorf("query user: %w", err)
+	}
+
 	return nil
 }

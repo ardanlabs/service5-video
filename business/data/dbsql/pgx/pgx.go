@@ -130,6 +130,60 @@ func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 	return nil
 }
 
+// NamedQueryStruct is a helper function for executing queries that return a
+// single value to be unmarshalled into a struct type where field replacement is necessary.
+func NamedQueryStruct(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any, dest any) error {
+	return namedQueryStruct(ctx, log, db, query, data, dest, false)
+}
+
+func namedQueryStruct(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any, dest any, withIn bool) error {
+	q := queryString(query, data)
+
+	log.Infoc(ctx, 5, "database.NamedQueryStruct", "query", q)
+
+	var rows *sqlx.Rows
+	var err error
+
+	switch withIn {
+	case true:
+		rows, err = func() (*sqlx.Rows, error) {
+			named, args, err := sqlx.Named(query, data)
+			if err != nil {
+				return nil, err
+			}
+
+			query, args, err := sqlx.In(named, args...)
+			if err != nil {
+				return nil, err
+			}
+
+			query = db.Rebind(query)
+			return db.QueryxContext(ctx, query, args...)
+		}()
+
+	default:
+		rows, err = sqlx.NamedQueryContext(ctx, db, query, data)
+	}
+
+	if err != nil {
+		if pqerr, ok := err.(*pgconn.PgError); ok && pqerr.Code == undefinedTable {
+			return ErrUndefinedTable
+		}
+		return err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return ErrDBNotFound
+	}
+
+	if err := rows.StructScan(dest); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // =============================================================================
 
 // queryString provides a pretty print version of the query and parameters.

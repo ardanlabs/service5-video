@@ -6,6 +6,7 @@ import (
 	"github.com/ardanlabs/service/business/core/user"
 	"github.com/ardanlabs/service/business/core/user/stores/userdb"
 	"github.com/ardanlabs/service/business/web/v1/auth"
+	"github.com/ardanlabs/service/business/web/v1/mid"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/ardanlabs/service/foundation/web"
 	"github.com/jmoiron/sqlx"
@@ -23,8 +24,12 @@ type Config struct {
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
+	authen := mid.Authenticate(cfg.Auth)
+	ruleAdmin := mid.Authorize(cfg.Auth, auth.RuleAdminOnly)
+
 	usrCore := user.NewCore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB))
 
 	hdl := New(usrCore, cfg.Auth)
 	app.Handle(http.MethodPost, version, "/users", hdl.Create)
+	app.Handle(http.MethodPost, version, "/usersauth", hdl.Create, authen, ruleAdmin)
 }
