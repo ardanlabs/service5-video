@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/ardanlabs/service/business/data/order"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -23,6 +24,7 @@ var (
 // retrieve data.
 type Storer interface {
 	Create(ctx context.Context, usr User) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, pageNumber int, rowsPerPage int) ([]User, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (User, error)
 	QueryByEmail(ctx context.Context, email mail.Address) (User, error)
 }
@@ -69,6 +71,16 @@ func (c *Core) Create(ctx context.Context, nu NewUser) (User, error) {
 	}
 
 	return usr, nil
+}
+
+// Query retrieves a list of existing users.
+func (c *Core) Query(ctx context.Context, filter QueryFilter, orderBy order.By, pageNumber int, rowsPerPage int) ([]User, error) {
+	users, err := c.storer.Query(ctx, filter, orderBy, pageNumber, rowsPerPage)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return users, nil
 }
 
 // QueryByID finds the user by the specified ID.
